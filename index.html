@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Watch a convolutional neural network see: live webcam activations, kernels, and predictions for every layer of MobileNet, running entirely in your browser. A 2026 rebuild of the ml4a ConvnetViewer.">
+  <title>ConvnetViewer — 2026</title>
+  <script>
+    // Some hosts (e.g. Vercel) serve this page at .../convnet with no trailing
+    // slash, which would make relative asset URLs resolve to the parent path.
+    // Compute the app directory, anchor a <base> for runtime-resolved URLs, and
+    // write the asset tags with explicit paths — static relative tags would let
+    // the browser's preload scanner fetch 404s from the parent path.
+    (function () {
+      const p = location.pathname;
+      const last = p.split('/').pop();
+      const dir = last && !last.includes('.') && !p.endsWith('/')
+        ? p + '/'
+        : p.slice(0, p.lastIndexOf('/') + 1);
+      window.__appDir = dir;
+      const base = document.createElement('base');
+      base.href = dir;
+      document.head.appendChild(base);
+      document.write('<link rel="stylesheet" href="' + dir + 'style.css">');
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23101014'/><rect x='2' y='2' width='5' height='5' fill='%236ee7a0'/><rect x='9' y='2' width='5' height='5' fill='%23555'/><rect x='2' y='9' width='5' height='5' fill='%23999'/><rect x='9' y='9' width='5' height='5' fill='%236ee7a0'/></svg>">
+</head>
+<body>
+  <header>
+    <h1>ConvnetViewer</h1>
+    <span class="sub">MobileNetV1 · live layer activations · after <a href="https://github.com/ml4a/ml4a-ofx/tree/master/apps/ConvnetViewer" target="_blank" rel="noopener">ml4a ConvnetViewer</a></span>
+    <div class="controls">
+      <button id="pauseBtn" title="Space">Pause</button>
+      <div class="seg" title="input source — the highlighted one is active">
+        <button id="webcamBtn">Webcam</button>
+        <label class="filebtn" id="fileBtn" for="fileInput">Image…</label>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+      <button id="normBtn" title="N — normalize each channel independently, or across the whole layer">Norm: per-channel</button>
+      <button id="weightsBtn" title="W — show the selected layer's learned kernels instead of activations">Weights</button>
+      <span id="fps" class="fps"></span>
+    </div>
+  </header>
+
+  <main>
+    <aside id="layerPane" aria-label="Layers">
+      <div class="pane-title">layers</div>
+      <div id="layerList"></div>
+    </aside>
+
+    <section id="stage">
+      <div id="stageBar">
+        <div class="stage-left">
+          <div id="layerInfo"></div>
+          <button id="infoBtn" title="about this layer (I)">i</button>
+        </div>
+        <div class="zoomctl">
+          <button id="zoomOutBtn" title="zoom out (-)">−</button>
+          <button id="zoomFitBtn" title="fit to window (0)">Fit</button>
+          <button id="zoomInBtn" title="zoom in (+)">+</button>
+          <span id="zoomLabel">fit</span>
+        </div>
+      </div>
+      <div id="infoPanel" hidden></div>
+      <div id="gridWrap"><canvas id="grid"></canvas></div>
+    </section>
+
+    <aside id="side">
+      <div class="panel">
+        <div class="panel-title" id="inputTitle">input</div>
+        <canvas id="preview" width="224" height="224"></canvas>
+      </div>
+      <div class="panel">
+        <div class="panel-title" id="predsTitle">predictions</div>
+        <div id="preds"></div>
+      </div>
+      <div id="status" class="panel status" hidden></div>
+    </aside>
+  </main>
+
+  <footer>
+    watch a convnet see: browse every layer's live activations and learned kernels.
+    everything runs locally in your browser (TensorFlow.js) — your camera and images never leave your machine.
+  </footer>
+
+  <div id="magnifier" hidden>
+    <canvas id="inspector"></canvas>
+    <div id="inspLabel" class="insp-label"></div>
+  </div>
+
+  <video id="video" autoplay playsinline muted></video>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4/dist/tf.min.js"></script>
+  <script>
+    document.write('<script src="' + window.__appDir + 'imagenet_labels.js"><\/script>');
+    document.write('<script src="' + window.__appDir + 'main.js"><\/script>');
+  </script>
+</body>
+</html>
