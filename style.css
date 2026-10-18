@@ -140,6 +140,7 @@ main {
   border-bottom: 1px solid var(--edge);
 }
 #layerInfo { color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#layerNav { display: none; }
 .zoomctl { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
 .zoomctl button { padding: 1px 8px; }
 #zoomLabel { color: var(--dim); min-width: 4ch; text-align: right; }
@@ -222,4 +223,66 @@ body.dragover::after {
   color: var(--accent);
   font-size: 20px;
   border: 2px dashed var(--accent);
+}
+
+/* ---------------------------------------------------------------- small screens */
+
+/* bigger touch targets wherever the primary pointer is a finger */
+@media (pointer: coarse) {
+  button, .filebtn, select { min-height: 36px; padding: 6px 12px; }
+  .zoomctl button { min-width: 36px; padding: 6px 10px; }
+  #infoBtn { width: 32px; height: 32px; min-height: 32px; }
+}
+
+@media (max-width: 760px) {
+  /* let the page scroll instead of squeezing three columns into one screen */
+  html, body { height: auto; min-height: 100%; }
+  body { font-size: 13px; }
+
+  header { gap: 4px 10px; padding: 8px 10px; align-items: center; }
+  .sub { display: none; }
+  .controls { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 6px; }
+  .controls button, .controls .filebtn { padding-left: 9px; padding-right: 9px; }
+  .fps { margin-left: auto; min-width: 0; }
+
+  main { display: flex; flex-direction: column; }
+
+  /* the sidebar becomes a dropdown with prev/next in the stage bar */
+  #layerPane { display: none; }
+  #layerInfo { display: none; }
+  #layerNav { display: flex; gap: 4px; align-items: center; min-width: 0; flex: 1; }
+  #layerSelect {
+    flex: 1;
+    min-width: 0;
+    background: var(--panel);
+    color: var(--accent);
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    font: inherit;
+    font-size: 16px; /* below 16px iOS zooms the page on focus */
+    padding: 4px 6px;
+  }
+  .stage-left { flex: 1 1 100%; }
+  #stageBar { flex-wrap: wrap; padding: 6px 10px; gap: 6px; }
+  .zoomctl { margin-left: auto; }
+  #zoomLabel { display: none; }
+
+  #stage { height: 64vh; height: 64dvh; min-height: 300px; }
+  #gridWrap { padding: 6px; }
+  #infoPanel { left: 8px; right: 8px; max-width: none; max-height: 55dvh; overflow-y: auto; }
+
+  /* input thumbnail beside the predictions, below the grid */
+  #side {
+    border-left: none;
+    border-top: 1px solid var(--edge);
+    display: grid;
+    grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+    align-items: start;
+    overflow: visible;
+  }
+  #side .status { grid-column: 1 / -1; }
+
+  #inspector { height: 128px; }
+
+  footer { padding: 8px 10px; }
 }

@@ -37,6 +37,9 @@ const els = {
   zoomOutBtn: document.getElementById('zoomOutBtn'),
   zoomFitBtn: document.getElementById('zoomFitBtn'),
   zoomLabel: document.getElementById('zoomLabel'),
+  layerSelect: document.getElementById('layerSelect'),
+  prevLayerBtn: document.getElementById('prevLayerBtn'),
+  nextLayerBtn: document.getElementById('nextLayerBtn'),
   magnifier: document.getElementById('magnifier'),
   inspLabel: document.getElementById('inspLabel'),
   inspector: document.getElementById('inspector'),
@@ -216,6 +219,7 @@ function subModelFor(name) {
 
 function buildLayerList() {
   els.layerList.textContent = '';
+  els.layerSelect.textContent = '';
   for (const l of layers) {
     const btn = document.createElement('button');
     btn.className = 'layer-btn';
@@ -227,6 +231,8 @@ function buildLayerList() {
     btn.appendChild(shape);
     btn.addEventListener('click', () => selectLayer(l.name));
     els.layerList.appendChild(btn);
+    // compact dropdown used instead of the sidebar on narrow screens
+    els.layerSelect.appendChild(new Option(`${l.name}  ${shape.textContent}`, l.name));
   }
 }
 
@@ -240,8 +246,12 @@ function selectLayer(name) {
   for (const btn of els.layerList.children) {
     const active = btn.dataset.layer === name;
     btn.classList.toggle('active', active);
-    if (active) btn.scrollIntoView({ block: 'nearest' });
+    if (active && btn.offsetParent) btn.scrollIntoView({ block: 'nearest' });
   }
+  els.layerSelect.value = name;
+  const i = layers.indexOf(l);
+  els.prevLayerBtn.disabled = i === 0;
+  els.nextLayerBtn.disabled = i === layers.length - 1;
   needsFrame = true;
   weightsDirty = true;
   if (!els.infoPanel.hidden) renderInfo();
@@ -785,6 +795,9 @@ els.zoomInBtn.addEventListener('click', () => setZoom(curScale() * 1.5));
 els.zoomOutBtn.addEventListener('click', () => setZoom(curScale() / 1.5));
 els.zoomFitBtn.addEventListener('click', zoomFit);
 els.infoBtn.addEventListener('click', toggleInfo);
+els.layerSelect.addEventListener('change', () => selectLayer(els.layerSelect.value));
+els.prevLayerBtn.addEventListener('click', () => stepLayer(-1));
+els.nextLayerBtn.addEventListener('click', () => stepLayer(1));
 
 // pinch / Ctrl+scroll zooms toward the cursor; plain scroll pans as usual
 els.gridWrap.addEventListener('wheel', (e) => {
@@ -793,10 +806,28 @@ els.gridWrap.addEventListener('wheel', (e) => {
   setZoom(curScale() * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
 }, { passive: false });
 
-// drag to pan; a click without movement toggles the magnifier on that tile
+// drag to pan; a click without movement toggles the magnifier on that tile;
+// two fingers pinch-zoom toward their midpoint
 let drag = null;
+const touches = new Map(); // pointerId -> {x, y}
+let pinch = null; // {dist, scale}
+
+function pinchGeometry() {
+  const [a, b] = [...touches.values()];
+  return { dist: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+}
+
 els.gridWrap.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
+  if (e.pointerType === 'touch') {
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) {
+      drag = null; // a second finger turns the pan into a pinch
+      pinch = { dist: Math.max(1, pinchGeometry().dist), scale: curScale() };
+      return;
+    }
+    if (touches.size > 2) return;
+  }
   drag = {
     x: e.clientX, y: e.clientY,
     sl: els.gridWrap.scrollLeft, st: els.gridWrap.scrollTop,
@@ -807,6 +838,12 @@ els.gridWrap.addEventListener('pointerdown', (e) => {
 els.gridWrap.addEventListener('pointermove', (e) => {
   lastPointer.x = e.clientX;
   lastPointer.y = e.clientY;
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && touches.size === 2) {
+    const g = pinchGeometry();
+    setZoom(pinch.scale * (g.dist / pinch.dist), g.cx, g.cy);
+    return;
+  }
   if (!drag) return;
   const dx = e.clientX - drag.x;
   const dy = e.clientY - drag.y;
@@ -817,15 +854,20 @@ els.gridWrap.addEventListener('pointermove', (e) => {
     els.gridWrap.scrollTop = drag.st - dy;
   }
 });
+function endTouch(e) {
+  touches.delete(e.pointerId);
+  if (touches.size < 2) pinch = null;
+}
 els.gridWrap.addEventListener('pointerup', (e) => {
+  endTouch(e);
   const d = drag;
   drag = null;
   if (d && !d.moved && d.onCanvas) inspectAt(e.clientX, e.clientY);
 });
-els.gridWrap.addEventListener('pointercancel', () => { drag = null; });
+els.gridWrap.addEventListener('pointercancel', (e) => { endTouch(e); drag = null; });
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); stepLayer(1); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); stepLayer(-1); }
@@ -840,6 +882,10 @@ document.addEventListener('keydown', (e) => {
     else clearInspect();
   }
 });
+
+// the magnifier is pinned in viewport coordinates, so it would drift when the
+// page itself scrolls (stacked mobile layout)
+window.addEventListener('scroll', clearInspect, { passive: true });
 
 window.addEventListener('resize', () => {
   if (zoomMode === 'fit') applyZoom();
